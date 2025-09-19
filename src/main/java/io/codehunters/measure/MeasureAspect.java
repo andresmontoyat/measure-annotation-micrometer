@@ -52,12 +52,15 @@ public class MeasureAspect {
     }
 
     private Object time(ProceedingJoinPoint pjp, Measured measured) throws Throwable {
+        // derive method and a safe metric name early
+        MethodSignature methodSignature = (MethodSignature) pjp.getSignature();
+        Method method = methodSignature.getMethod();
+        String metricName = measured.name() == null || measured.name().isBlank()
+                ? method.getDeclaringClass().getSimpleName() + "." + method.getName()
+                : measured.name();
 
         List<String> tags = new ArrayList<>(Arrays.asList(measured.tags()));
         if ((measured.expressions() != null) && measured.expressions().length > 0) {
-            MethodSignature methodSignature = (MethodSignature) pjp.getSignature();
-            Method method = methodSignature.getMethod();
-
             Object[] args = pjp.getArgs();
             String[] paramNames = parameterNameDiscoverer.getParameterNames(method);
 
@@ -104,14 +107,14 @@ public class MeasureAspect {
         LongTaskTimer.Sample longSample = null;
 
         if (useLongTask) {
-            LongTaskTimer ltt = LongTaskTimer.builder(String.format("%s.long-task", measured.name()))
+            LongTaskTimer ltt = LongTaskTimer.builder(String.format("%s.long-task", metricName))
                     .description("Long task execution time")
                     .tags(micrometerTags)
                     .register(registry);
             longSample = ltt.start();
         } else {
             timerSample = Timer.start(registry);
-            timer = Timer.builder(measured.name())
+            timer = Timer.builder(metricName)
                     .description("Execution time")
                     .tags(micrometerTags)
                     .register(registry);
@@ -121,7 +124,7 @@ public class MeasureAspect {
             return pjp.proceed();
         } catch (Throwable ex) {
             if (measured.recordExceptions()) {
-                Counter.builder(String.format("%s.errors", measured.name()))
+                Counter.builder(String.format("%s.errors", metricName))
                         .tags(micrometerTags)
                         .tag("exception", ex.getClass().getSimpleName())
                         .register(registry)
