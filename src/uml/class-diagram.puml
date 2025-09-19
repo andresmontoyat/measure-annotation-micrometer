@@ -1,0 +1,19 @@
+@startuml
+' Class diagram for measure-annotation-micrometer
+skinparam dpi 150
+skinparam shadowing false
+hide empty members
+skinparam classAttributeIconSize 0
+
+package "io.codehunters.measure" {
+  class Measured <<annotation>>
+  class MeasureAspect
+  interface TestService
+  class TestServiceImpl
+}
+
+' Relationships based on code
+MeasureAspect ..> Measured : uses
+TestServiceImpl ..|> TestService
+
+@enduml
